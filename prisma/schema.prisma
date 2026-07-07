@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      String   @default("MEMBER") // MEMBER | ADMIN
+  status    String   @default("PENDING") // PENDING | APPROVED | DECLINED
+  createdAt DateTime @default(now())
+
+  // Profile
+  phone       String?
+  city        String?
+  area        String? // neighborhood, e.g. Culver City
+  gender      String?
+  ageRange    String? // "60s" | "70s" | "80s" | "90+"
+  origin      String? // region of origin, e.g. Gujarat, Punjab
+  languages   String? // comma-separated
+  faith       String? // optional
+  interests   String? // comma-separated
+  bio         String?
+  avatarColor String  @default("#C2703D")
+
+  // Family helper (adult child who set up / co-manages the account)
+  helperName  String?
+  helperEmail String?
+  helperPhone String?
+  setUpByFamily Boolean @default(false)
+
+  // Chai Companion persona (JSON string of onboarding answers)
+  companionProfile String?
+
+  sentMessages     Message[] @relation("sent")
+  receivedMessages Message[] @relation("received")
+  companionChats   CompanionMessage[]
+}
+
+model LoginCode {
+  id        String   @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model Message {
+  id         String    @id @default(cuid())
+  senderId   String
+  receiverId String
+  body       String
+  createdAt  DateTime  @default(now())
+  readAt     DateTime?
+
+  sender   User @relation("sent", fields: [senderId], references: [id])
+  receiver User @relation("received", fields: [receiverId], references: [id])
+
+  @@index([senderId, receiverId])
+  @@index([receiverId])
+}
+
+model CompanionMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}

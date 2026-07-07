@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #faf5ec;
+  --color-cream-dark: #f1e8d8;
+  --color-chai: #c2703d;
+  --color-chai-dark: #a05a2e;
+  --color-masala: #4a3426;
+  --color-cardamom: #3d8a6e;
+  --color-marigold: #e8a13c;
+  --font-serif-display: Georgia, "Times New Roman", serif;
+}
+
+/* Elder-friendly base: large text, generous spacing, high contrast */
+html {
+  font-size: 18px;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-masala);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.6;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-serif-display);
+}
+
+/* Big, obvious touch targets everywhere */
+button, a.btn, input, select, textarea {
+  min-height: 48px;
+}
+
+input, select, textarea {
+  font-size: 1.05rem;
+}
+
+*:focus-visible {
+  outline: 3px solid var(--color-marigold);
+  outline-offset: 2px;
+}
