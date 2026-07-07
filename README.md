@@ -29,12 +29,40 @@ The design is elder-first: 18px+ base font, 48px touch targets, high contrast,
 simple navigation with icons and labels, mobile-first and comfortable on a
 Chromebook or MacBook.
 
+## Database: Supabase (Postgres)
+
+The app uses Supabase's hosted Postgres via Prisma. One-time setup:
+
+1. Go to [supabase.com](https://supabase.com) → **Start your project** → sign in
+   with GitHub (or email).
+2. Create a **New project**: name it `chaipani`, choose the region closest to
+   your users (e.g. **West US (North California)** for Los Angeles), and set a
+   strong **database password** — save it somewhere safe, you'll need it in the
+   connection strings.
+3. Wait a minute or two for the project to provision.
+4. Click the **Connect** button at the top of the project dashboard:
+   - Copy the **Transaction pooler** string (port `6543`) → this is
+     `DATABASE_URL`. Append `?pgbouncer=true` to the end.
+   - Copy the **Session pooler** string (port `5432`) → this is `DIRECT_URL`.
+   - In both, replace `[YOUR-PASSWORD]` with the password from step 2.
+5. Put both values in `.env` (see `.env.example`), then create the tables:
+
+   ```bash
+   npx prisma db push
+   ```
+
+> Why two URLs? Serverless hosts (Vercel) open many short-lived connections, so
+> the app talks to Postgres through Supabase's connection pooler (`6543`).
+> Schema changes (`prisma db push`) need a session connection (`5432`).
+> Both pooler strings work over IPv4, which Vercel requires — don't use the
+> "Direct connection" string, which is IPv6-only on the free tier.
+
 ## Running locally
 
 ```bash
-cp .env.example .env      # then edit .env
+cp .env.example .env      # then fill in your Supabase URLs + secrets
 npm install
-npx prisma db push        # creates the SQLite database
+npx prisma db push        # creates the tables in Supabase
 npm run dev
 ```
 
@@ -44,7 +72,8 @@ Open http://localhost:3000.
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | `file:./dev.db` for local SQLite. Use Postgres in production. |
+| `DATABASE_URL` | Supabase **Transaction pooler** string (port 6543) + `?pgbouncer=true` |
+| `DIRECT_URL` | Supabase **Session pooler** string (port 5432), used for `prisma db push` |
 | `SESSION_SECRET` | Signs login cookies. `openssl rand -hex 32` |
 | `ANTHROPIC_API_KEY` | Powers the Chai Companion (get one at platform.claude.com). Without it the companion shows a friendly setup notice. |
 | `ADMIN_EMAILS` | Comma-separated emails that get admin access automatically on login. |
@@ -58,13 +87,15 @@ Open http://localhost:3000.
 
 ## Going to production
 
-1. **Database** — switch `DATABASE_URL` to Postgres (Neon, Supabase, RDS) and
-   change `provider = "postgresql"` in `prisma/schema.prisma`. SQLite does not
-   persist on serverless hosts like Vercel.
+1. **Database** — already handled: the Supabase project from the setup above
+   works for production as-is. For extra safety, enable daily backups in the
+   Supabase dashboard (Database → Backups).
 2. **Email** — replace the console-logging `sendCode()` in `src/lib/auth.ts`
    with a provider (Resend is ~20 lines). Set `SHOW_DEV_LOGIN_CODE=false`.
-3. **Deploy** — Vercel works out of the box (`npm run build`). Point
-   chaipanisocial.com and chaipaniseniors.com at the deployment.
+3. **Deploy** — Vercel works out of the box (`npm run build` pushes the schema
+   and builds). Add all the environment variables from `.env` in the Vercel
+   project settings, then point chaipanisocial.com and chaipaniseniors.com at
+   the deployment.
 4. Set a strong `SESSION_SECRET` and your `ANTHROPIC_API_KEY`.
 
 ## Roadmap ideas
@@ -78,5 +109,5 @@ Open http://localhost:3000.
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript · Tailwind CSS 4 · Prisma + SQLite ·
-Anthropic TypeScript SDK (streaming) · JWT session cookies (jose)
+Next.js 15 (App Router) · TypeScript · Tailwind CSS 4 · Prisma + Supabase
+Postgres · Anthropic TypeScript SDK (streaming) · JWT session cookies (jose)
