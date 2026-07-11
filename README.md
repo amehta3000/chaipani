@@ -85,18 +85,57 @@ Open http://localhost:3000.
 2. Join via `/join` (or `/login` if already registered)
 3. On login you're auto-promoted to `ADMIN` + `APPROVED` and `/admin` appears in the nav
 
-## Going to production
+## Deploying to Vercel
 
-1. **Database** — already handled: the Supabase project from the setup above
-   works for production as-is. For extra safety, enable daily backups in the
-   Supabase dashboard (Database → Backups).
-2. **Email** — replace the console-logging `sendCode()` in `src/lib/auth.ts`
-   with a provider (Resend is ~20 lines). Set `SHOW_DEV_LOGIN_CODE=false`.
-3. **Deploy** — Vercel works out of the box (`npm run build` pushes the schema
-   and builds). Add all the environment variables from `.env` in the Vercel
-   project settings, then point chaipanisocial.com and chaipaniseniors.com at
-   the deployment.
-4. Set a strong `SESSION_SECRET` and your `ANTHROPIC_API_KEY`.
+> Why Vercel? GitHub Pages only serves static files and can't run the API
+> routes this app depends on (login codes, messaging, the streaming Chai
+> Companion). Vercel runs Next.js server code natively and scales
+> automatically — each request gets its own serverless function, so the site
+> handles 10 members or 10,000 without configuration changes. The free Hobby
+> tier is fine for launch.
+
+### One-time setup
+
+1. Go to [vercel.com](https://vercel.com) → **Sign up** → **Continue with
+   GitHub** (use the account that owns this repo).
+2. Click **Add New… → Project** and **Import** the `chaipani` repository.
+   Vercel auto-detects Next.js — leave the build settings as they are
+   (`npm run build` already generates the Prisma client, pushes the schema to
+   Supabase, and builds the app).
+3. Before clicking Deploy, open **Environment Variables** and add:
+
+   | Name | Value |
+   |---|---|
+   | `DATABASE_URL` | Supabase **Transaction pooler** string (port 6543) + `?pgbouncer=true` |
+   | `DIRECT_URL` | Supabase **Session pooler** string (port 5432) |
+   | `SESSION_SECRET` | a fresh long random string — `openssl rand -hex 32` |
+   | `ANTHROPIC_API_KEY` | from [platform.claude.com](https://platform.claude.com) |
+   | `ADMIN_EMAILS` | your email(s), comma-separated |
+   | `SHOW_DEV_LOGIN_CODE` | `false` |
+
+4. Click **Deploy**. In a minute or two you'll get a working
+   `chaipani-xxxx.vercel.app` URL — test the full flow there first.
+
+### Attaching the domains
+
+1. In the Vercel project: **Settings → Domains → Add**.
+2. Add `chaipanisocial.com` as the **primary** domain, and also add
+   `www.chaipanisocial.com` (Vercel will offer to redirect www → apex).
+3. Add `chaipaniseniors.com` and set it to **Redirect** to
+   `chaipanisocial.com` (permanent 308) — both names work, one canonical site.
+4. Vercel shows you the DNS records to set at your domain registrar: an `A`
+   record (`76.76.21.21`) for each apex domain and a `CNAME`
+   (`cname.vercel-dns.com`) for www. Add them where you bought the domains;
+   propagation usually takes minutes. HTTPS certificates are automatic.
+
+### After deploying
+
+- Every `git push` to the main branch auto-deploys; pushes to other branches
+  get preview URLs.
+- **Email** — before inviting real members, replace the console-logging
+  `sendCode()` in `src/lib/auth.ts` with a provider (Resend is ~20 lines);
+  until then login codes only appear in Vercel's function logs.
+- Enable daily backups in Supabase (Database → Backups) for peace of mind.
 
 ## Roadmap ideas
 
