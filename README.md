@@ -76,6 +76,8 @@ Open http://localhost:3000.
 | `DIRECT_URL` | Supabase **Session pooler** string (port 5432), used for `prisma db push` |
 | `SESSION_SECRET` | Signs login cookies. `openssl rand -hex 32` |
 | `ANTHROPIC_API_KEY` | Powers the Chai Companion (get one at platform.claude.com). Without it the companion shows a friendly setup notice. |
+| `RESEND_API_KEY` | Sends sign-in code emails via [Resend](https://resend.com). Empty in dev = codes print to the console. |
+| `EMAIL_FROM` | The from address for code emails, e.g. `ChaiPani <signin@chaipanisocial.com>`. Must be on a domain verified in Resend. |
 | `ADMIN_EMAILS` | Comma-separated emails that get admin access automatically on login. |
 | `SHOW_DEV_LOGIN_CODE` | `true` shows login codes in the UI (testing only — set to `false` in production). |
 
@@ -110,6 +112,8 @@ Open http://localhost:3000.
    | `DIRECT_URL` | Supabase **Session pooler** string (port 5432) |
    | `SESSION_SECRET` | a fresh long random string — `openssl rand -hex 32` |
    | `ANTHROPIC_API_KEY` | from [platform.claude.com](https://platform.claude.com) |
+   | `RESEND_API_KEY` | from [resend.com](https://resend.com) (see Email setup below) |
+   | `EMAIL_FROM` | `ChaiPani <signin@chaipanisocial.com>` |
    | `ADMIN_EMAILS` | your email(s), comma-separated |
    | `SHOW_DEV_LOGIN_CODE` | `false` |
 
@@ -128,13 +132,33 @@ Open http://localhost:3000.
    (`cname.vercel-dns.com`) for www. Add them where you bought the domains;
    propagation usually takes minutes. HTTPS certificates are automatic.
 
+### Email setup (Resend)
+
+Sign-in codes are emailed through [Resend](https://resend.com) (free tier:
+3,000 emails/month — plenty). One-time setup:
+
+1. Create an account at resend.com (sign in with GitHub works).
+2. **Domains → Add Domain** → enter `chaipanisocial.com`. Resend shows a few
+   DNS records (MX + TXT for the `send` subdomain, DKIM, DMARC) — add them at
+   your domain registrar, then click **Verify**. This is what lets emails come
+   from your own domain and land in inboxes instead of spam.
+3. **API Keys → Create API Key** (permission: Sending access). Copy it into
+   `RESEND_API_KEY` on Vercel, and set `EMAIL_FROM` to
+   `ChaiPani <signin@chaipanisocial.com>`.
+4. Test: use the sign-in page with your own email — the code should arrive
+   within seconds.
+
+Before the domain is verified you can test with
+`EMAIL_FROM="ChaiPani <onboarding@resend.dev>"`, but Resend's sandbox address
+only delivers to the email you signed up with.
+
+If the email service is ever down, the sign-in page shows a friendly "try
+again in a minute" message rather than failing silently.
+
 ### After deploying
 
 - Every `git push` to the main branch auto-deploys; pushes to other branches
   get preview URLs.
-- **Email** — before inviting real members, replace the console-logging
-  `sendCode()` in `src/lib/auth.ts` with a provider (Resend is ~20 lines);
-  until then login codes only appear in Vercel's function logs.
 - Enable daily backups in Supabase (Database → Backups) for peace of mind.
 
 ## Roadmap ideas

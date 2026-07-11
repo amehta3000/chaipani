@@ -16,6 +16,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const devCode = await issueLoginCode(email);
+  const { sent, devCode } = await issueLoginCode(email);
+  if (!sent && !devCode) {
+    return NextResponse.json(
+      { error: "We couldn't send the email just now. Please try again in a minute." },
+      { status: 502 }
+    );
+  }
   return NextResponse.json({ ok: true, devCode });
 }

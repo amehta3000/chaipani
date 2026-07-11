@@ -53,6 +53,16 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const devCode = await issueLoginCode(email);
+  const { sent, devCode } = await issueLoginCode(email);
+  if (!sent && !devCode) {
+    // Account was created; the member can get a fresh code from /login.
+    return NextResponse.json(
+      {
+        error:
+          "Your account was created, but the code email didn't go through. Please use the sign-in page to request a new code.",
+      },
+      { status: 502 }
+    );
+  }
   return NextResponse.json({ ok: true, devCode });
 }
