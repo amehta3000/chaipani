@@ -78,7 +78,8 @@ Open http://localhost:3000.
 | `ANTHROPIC_API_KEY` | Powers the Chai Companion (get one at platform.claude.com). Without it the companion shows a friendly setup notice. |
 | `RESEND_API_KEY` | Sends sign-in code emails via [Resend](https://resend.com). Empty in dev = codes print to the console. |
 | `EMAIL_FROM` | The from address for code emails, e.g. `ChaiPani <signin@chaipanisocial.com>`. Must be on a domain verified in Resend. |
-| `ADMIN_EMAILS` | Comma-separated emails that get admin access automatically on login. |
+| `APP_URL` | Public site URL, used in notification-email links (e.g. `https://www.chaipanisocial.com`). |
+| `ADMIN_EMAILS` | Comma-separated emails that get admin access automatically on login. Admins are emailed when a new member signs up. |
 | `SHOW_DEV_LOGIN_CODE` | `true` shows login codes in the UI (testing only — set to `false` in production). |
 
 ### Becoming admin
@@ -114,6 +115,7 @@ Open http://localhost:3000.
    | `ANTHROPIC_API_KEY` | from [platform.claude.com](https://platform.claude.com) |
    | `RESEND_API_KEY` | from [resend.com](https://resend.com) (see Email setup below) |
    | `EMAIL_FROM` | `ChaiPani <signin@chaipanisocial.com>` |
+   | `APP_URL` | `https://www.chaipanisocial.com` |
    | `ADMIN_EMAILS` | your email(s), comma-separated |
    | `SHOW_DEV_LOGIN_CODE` | `false` |
 

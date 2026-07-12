@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
+import { notifyNewMessage } from "@/lib/notify";
 
 async function requireApproved() {
   const user = await getCurrentUser();
@@ -62,9 +63,25 @@ export async function POST(
   if (text.length > 2000)
     return NextResponse.json({ error: "Message too long." }, { status: 400 });
 
+  // Email the receiver only when this starts a fresh pile of unread messages —
+  // during a live back-and-forth (or a burst) they get a single email, and the
+  // next one only after they've read these.
+  const unreadBefore = await db.message.count({
+    where: { senderId: user.id, receiverId: partnerId, readAt: null },
+  });
+
   const message = await db.message.create({
     data: { senderId: user.id, receiverId: partnerId, body: text },
   });
+
+  if (unreadBefore === 0) {
+    await notifyNewMessage({
+      toEmail: partner.email,
+      toFirstName: partner.name.split(" ")[0],
+      senderName: user.name,
+      senderId: user.id,
+    }).catch((e) => console.error("Message notification failed:", e));
+  }
 
   return NextResponse.json({ message });
 }

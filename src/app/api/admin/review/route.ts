@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
+import { notifyApproved } from "@/lib/notify";
 
 export async function POST(req: NextRequest) {
   const admin = await getCurrentUser();
@@ -13,10 +14,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  await db.user.update({
+  const member = await db.user.update({
     where: { id: String(userId) },
     data: { status: decision },
   });
+
+  if (decision === "APPROVED") {
+    await notifyApproved(member).catch((e) =>
+      console.error("Approval notification failed:", e)
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

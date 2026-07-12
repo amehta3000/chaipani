@@ -6,7 +6,14 @@ import { buildCompanionSystemPrompt } from "@/lib/persona";
 
 export const maxDuration = 60;
 
-const HISTORY_LIMIT = 40;
+// Generous window: a daily chatter takes weeks to fill this, so the companion
+// keeps remembering what it was told. (A distilled long-term memory is the
+// eventual replacement.)
+const HISTORY_LIMIT = 200;
+
+// If the last exchange is older than this, the companion greets first on the
+// next visit instead of waiting behind an empty input box.
+const GREETING_AFTER_MS = 20 * 60 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
@@ -46,14 +53,15 @@ export async function POST(req: NextRequest) {
   });
   const history = recent.reverse();
 
-  // The Messages API requires the first message to be from the user.
-  const firstUserIdx = history.findIndex((m) => m.role === "user");
-  const messages = history
-    .slice(firstUserIdx)
-    .map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
+  const messages = history.map((m) => ({
+    role: m.role as "user" | "assistant",
+    content: m.content,
+  }));
+  // The Messages API requires the first message to be from the user; history
+  // can start with an assistant greeting (see GET), so pad rather than drop it.
+  if (messages[0]?.role === "assistant") {
+    messages.unshift({ role: "user", content: "[I just opened the chat.]" });
+  }
 
   const client = new Anthropic();
   const userId = user.id;
@@ -124,5 +132,51 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: HISTORY_LIMIT,
   });
-  return NextResponse.json({ messages: recent.reverse() });
+  const messages = recent.reverse();
+
+  // Speak first: on a first visit or after a day away, open with a personal
+  // greeting rather than a blank box.
+  const last = messages[messages.length - 1];
+  const stale = !last || Date.now() - last.createdAt.getTime() > GREETING_AFTER_MS;
+  if (stale && process.env.ANTHROPIC_API_KEY) {
+    const greeting = await generateGreeting(user, messages).catch((err) => {
+      console.error("Greeting generation failed:", err);
+      return null;
+    });
+    if (greeting) {
+      const saved = await db.companionMessage.create({
+        data: { userId: user.id, role: "assistant", content: greeting },
+      });
+      messages.push(saved);
+    }
+  }
+
+  return NextResponse.json({ messages });
+}
+
+async function generateGreeting(
+  user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>,
+  history: { role: string; content: string }[]
+): Promise<string | null> {
+  const client = new Anthropic();
+  const firstEver = history.length === 0;
+  const recentContext = history
+    .slice(-12)
+    .map((m) => `${m.role === "user" ? "Them" : "You"}: ${m.content}`)
+    .join("\n");
+
+  const instruction = firstEver
+    ? "[The member just opened the chat for the very first time. Introduce yourself warmly in one or two short sentences and ask one friendly, easy question to get talking. Reply with only the greeting.]"
+    : `[The member is returning after some time away. Your recent conversation was:\n${recentContext}\n\nWelcome them back warmly in one or two short sentences — reference something from before if it feels natural — and ask one friendly question. Reply with only the greeting.]`;
+
+  const response = await client.messages.create({
+    model: "claude-opus-4-8",
+    max_tokens: 300,
+    system: buildCompanionSystemPrompt(user),
+    messages: [{ role: "user", content: instruction }],
+  });
+
+  if (response.stop_reason === "refusal") return null;
+  const text = response.content.find((b) => b.type === "text");
+  return text && text.text.trim() ? text.text.trim() : null;
 }

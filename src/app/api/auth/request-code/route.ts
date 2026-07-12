@@ -16,7 +16,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { sent, devCode } = await issueLoginCode(email);
+  const { sent, devCode, throttled } = await issueLoginCode(email);
+  if (throttled) {
+    return NextResponse.json(
+      { error: "You've asked for several codes recently. Please wait a little while, then try again." },
+      { status: 429 }
+    );
+  }
   if (!sent && !devCode) {
     return NextResponse.json(
       { error: "We couldn't send the email just now. Please try again in a minute." },

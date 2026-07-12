@@ -22,13 +22,15 @@ export default async function MembersPage({
       id: { not: user.id },
       ...(query
         ? {
+            // mode:insensitive — Postgres `contains` is case-sensitive by
+            // default, so "gujarati" wouldn't match "Gujarati" without it.
             OR: [
-              { name: { contains: query } },
-              { area: { contains: query } },
-              { city: { contains: query } },
-              { origin: { contains: query } },
-              { languages: { contains: query } },
-              { interests: { contains: query } },
+              { name: { contains: query, mode: "insensitive" } },
+              { area: { contains: query, mode: "insensitive" } },
+              { city: { contains: query, mode: "insensitive" } },
+              { origin: { contains: query, mode: "insensitive" } },
+              { languages: { contains: query, mode: "insensitive" } },
+              { interests: { contains: query, mode: "insensitive" } },
             ],
           }
         : {}),

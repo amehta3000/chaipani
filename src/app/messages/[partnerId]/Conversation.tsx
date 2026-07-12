@@ -4,6 +4,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type Msg = { id: string; senderId: string; body: string; createdAt: string };
 
+function formatWhen(iso: string): string {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) return time;
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return `Yesterday ${time}`;
+  return `${d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} · ${time}`;
+}
+
 export default function Conversation({
   partnerId,
   partnerName,
@@ -61,7 +72,10 @@ export default function Conversation({
   }
 
   return (
-    <div className="flex flex-col" style={{ minHeight: "calc(100vh - 240px)" }}>
+    <div
+      className="flex flex-col chat-fill"
+      style={{ "--chat-offset": "240px" } as React.CSSProperties}
+    >
       <div className="flex-1 py-6 space-y-3 overflow-y-auto">
         {messages.length === 0 && (
           <p className="text-center text-xl opacity-70 py-10">
@@ -71,7 +85,7 @@ export default function Conversation({
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`flex ${m.senderId === me ? "justify-end" : "justify-start"}`}
+            className={`flex flex-col ${m.senderId === me ? "items-end" : "items-start"}`}
           >
             <div
               className={`max-w-[85%] px-5 py-3 rounded-3xl text-lg leading-relaxed whitespace-pre-wrap ${
@@ -82,6 +96,7 @@ export default function Conversation({
             >
               {m.body}
             </div>
+            <span className="mt-1 px-2 text-sm opacity-60">{formatWhen(m.createdAt)}</span>
           </div>
         ))}
         <div ref={bottomRef} />

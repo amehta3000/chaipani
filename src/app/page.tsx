@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 
 export default async function Home() {
   const user = await getCurrentUser();
-  if (user) redirect(user.status === "APPROVED" ? "/members" : "/pending");
+  // Signed-in members land with their companion — with only a handful of
+  // members so far, a warm conversation beats a sparse directory.
+  if (user) redirect(user.status === "APPROVED" ? "/companion" : "/pending");
 
   return (
     <div className="py-10">

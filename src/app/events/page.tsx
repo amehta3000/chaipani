@@ -19,8 +19,9 @@ export default function EventsPage() {
           <li>🪔 <strong>Festival gatherings</strong> — Diwali, Eid, Vaisakhi, Pongal and more</li>
         </ul>
         <p className="mt-5 text-lg opacity-80">
-          Members will be the first to know. Meanwhile, make friends in the
-          members area and chat with your Chai Companion!
+          Our first chai circle kicks off once we reach our first 20 members —
+          invite a friend and help us get there! Meanwhile, make friends in the
+          members area and chat with your Chai Companion.
         </p>
       </div>
     </div>

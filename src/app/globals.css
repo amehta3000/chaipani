@@ -40,3 +40,14 @@ input, select, textarea {
   outline: 3px solid var(--color-marigold);
   outline-offset: 2px;
 }
+
+/* Chat layout height. dvh tracks the *visible* viewport, so the input stays
+   reachable when iPhone Safari's toolbar collapses/expands. */
+.chat-fill {
+  min-height: calc(100vh - var(--chat-offset, 180px));
+}
+@supports (height: 100dvh) {
+  .chat-fill {
+    min-height: calc(100dvh - var(--chat-offset, 180px));
+  }
+}

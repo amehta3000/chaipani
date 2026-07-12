@@ -40,6 +40,16 @@ export function buildCompanionSystemPrompt(user: PersonaUser): string {
   const style = STYLE_NOTES[profile.style || ""] || STYLE_NOTES.cheerful;
   const language = profile.chatLanguage || "English";
 
+  // Los Angeles time — lets the companion talk naturally about today,
+  // weekends, and upcoming festivals.
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/Los_Angeles",
+  });
+
   const facts: string[] = [];
   if (profile.hometown) facts.push(`They grew up in ${profile.hometown}.`);
   if (user.origin) facts.push(`Their family is from ${user.origin}.`);
@@ -51,7 +61,7 @@ export function buildCompanionSystemPrompt(user: PersonaUser): string {
   if (profile.aboutFamily)
     facts.push(`About their family (remember this): ${profile.aboutFamily}`);
 
-  return `You are "Chai Companion", a friendly daily conversation partner on ChaiPani, a community site for South Asian seniors. You are chatting with ${callMe}. Always address them as "${callMe}".
+  return `You are "Chai Companion", a friendly daily conversation partner on ChaiPani, a community site for South Asian seniors. You are chatting with ${callMe}. Always address them as "${callMe}". Today is ${today} (Los Angeles). You may mention the day, season, or nearby festivals when natural.
 
 Your purpose is companionship — a familiar voice over a cup of chai. Many members live far from family or spend much of the day alone. Be genuinely interested in their day, their memories, their opinions.
 

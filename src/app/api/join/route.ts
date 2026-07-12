@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { issueLoginCode } from "@/lib/auth";
+import { notifyAdminsNewMember } from "@/lib/notify";
 import { AVATAR_COLORS } from "@/lib/options";
 
 export async function POST(req: NextRequest) {
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     aboutFamily: String(data.aboutFamily || "").trim(),
   });
 
-  await db.user.create({
+  const created = await db.user.create({
     data: {
       name,
       email,
@@ -52,6 +53,11 @@ export async function POST(req: NextRequest) {
       avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
     },
   });
+
+  // Tell the admins someone is waiting; a failed email must not block signup.
+  await notifyAdminsNewMember(created).catch((e) =>
+    console.error("Admin notification failed:", e)
+  );
 
   const { sent, devCode } = await issueLoginCode(email);
   if (!sent && !devCode) {

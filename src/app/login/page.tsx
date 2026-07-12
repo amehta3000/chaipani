@@ -51,7 +51,7 @@ export default function LoginPage() {
         setError(data.error || "That code didn't work.");
         return;
       }
-      router.push(data.status === "APPROVED" ? "/members" : "/pending");
+      router.push(data.status === "APPROVED" ? "/companion" : "/pending");
       router.refresh();
     } finally {
       setBusy(false);

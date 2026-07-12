@@ -11,12 +11,37 @@ const STARTERS = [
   "Let's talk about old film songs",
 ];
 
-export default function CompanionChat({ callMe }: { callMe: string }) {
+// BCP-47 tags for browser speech recognition / synthesis, keyed by the
+// member's preferred chat language from onboarding.
+const SPEECH_LANGS: Record<string, string> = {
+  English: "en-IN",
+  "Hinglish (Hindi + English mix)": "en-IN",
+  Hindi: "hi-IN",
+  Gujarati: "gu-IN",
+  Punjabi: "pa-Guru-IN",
+  Tamil: "ta-IN",
+  Urdu: "ur-IN",
+};
+
+export default function CompanionChat({
+  callMe,
+  chatLanguage,
+}: {
+  callMe: string;
+  chatLanguage: string;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [micSupported, setMicSupported] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recRef = useRef<any>(null);
+
+  const speechLang = SPEECH_LANGS[chatLanguage] || "en-IN";
 
   useEffect(() => {
     fetch("/api/companion")
@@ -27,12 +52,61 @@ export default function CompanionChat({ callMe }: { callMe: string }) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    setMicSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition));
+    setVoiceSupported("speechSynthesis" in window);
+    return () => {
+      recRef.current?.stop?.();
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  function toggleMic() {
+    if (listening) {
+      recRef.current?.stop?.();
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = speechLang;
+    rec.interimResults = true;
+    rec.continuous = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((r: any) => r[0].transcript)
+        .join("");
+      setInput(transcript);
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recRef.current = rec;
+    rec.start();
+    setListening(true);
+  }
+
+  function speak(text: string) {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = speechLang;
+    utterance.rate = 0.95;
+    window.speechSynthesis.speak(utterance);
+  }
 
   async function send(text: string) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
+    recRef.current?.stop?.();
     setInput("");
     setBusy(true);
     setMessages((m) => [
@@ -90,7 +164,7 @@ export default function CompanionChat({ callMe }: { callMe: string }) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col" style={{ minHeight: "calc(100vh - 180px)" }}>
+    <div className="max-w-3xl mx-auto flex flex-col chat-fill">
       <div className="py-5 text-center border-b border-cream-dark">
         <h1 className="text-3xl font-bold text-chai-dark">☕ Chai Companion</h1>
         <p className="mt-1 text-lg opacity-80">
@@ -131,8 +205,16 @@ export default function CompanionChat({ callMe }: { callMe: string }) {
                   : "bg-white border border-cream-dark rounded-bl-lg"
               }`}
             >
-              {m.content || (
-                <span className="opacity-60">☕ thinking…</span>
+              {m.content || <span className="opacity-60">☕ thinking…</span>}
+              {m.role === "assistant" && m.content && voiceSupported && (
+                <button
+                  onClick={() => speak(m.content)}
+                  className="block mt-2 text-base opacity-60 hover:opacity-100"
+                  aria-label="Read this message aloud"
+                  title="Read aloud"
+                >
+                  🔊 Listen
+                </button>
               )}
             </div>
           </div>
@@ -141,25 +223,45 @@ export default function CompanionChat({ callMe }: { callMe: string }) {
       </div>
 
       <div className="sticky bottom-0 bg-cream pt-2 pb-5">
+        {listening && (
+          <p className="text-center text-lg text-chai-dark font-semibold pb-2">
+            🎤 Listening… speak now, then press Send
+          </p>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             send(input);
           }}
-          className="flex gap-3"
+          className="flex gap-2 sm:gap-3"
         >
+          {micSupported && (
+            <button
+              type="button"
+              onClick={toggleMic}
+              aria-label={listening ? "Stop listening" : "Speak instead of typing"}
+              title="Speak instead of typing"
+              className={`shrink-0 w-14 rounded-2xl border-2 text-2xl transition ${
+                listening
+                  ? "bg-red-600 border-red-600 text-white animate-pulse"
+                  : "bg-white border-cream-dark hover:border-chai"
+              }`}
+            >
+              🎤
+            </button>
+          )}
           <input
             className="flex-1 min-w-0 rounded-2xl border-2 border-cream-dark bg-white px-5 py-4 text-lg focus:border-chai"
             size={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message here…"
+            placeholder={micSupported ? "Type or press 🎤 to speak…" : "Type your message here…"}
             disabled={busy}
           />
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="px-7 py-4 rounded-2xl bg-chai text-white text-xl font-semibold hover:bg-chai-dark disabled:opacity-50"
+            className="px-5 sm:px-7 py-4 rounded-2xl bg-chai text-white text-xl font-semibold hover:bg-chai-dark disabled:opacity-50"
           >
             Send
           </button>
