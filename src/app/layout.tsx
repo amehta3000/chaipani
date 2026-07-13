@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import { getCurrentUser } from "@/lib/session";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "ChaiPani — Good company for South Asian seniors",
@@ -45,6 +46,7 @@ export default async function RootLayout({
             Made with love for our elders. chaipanisocial.com · chaipaniseniors.com
           </p>
         </footer>
+        <Analytics />
       </body>
     </html>
   );
